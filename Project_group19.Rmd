@@ -8,7 +8,7 @@ library(quanteda)
 library(jsonlite)
 library(stringr)
 ```
-
+Загружаем данные
 ```{r}
 reviews = readLines("~/shared/minor3_2016/data/amazon/reviews_Digital_Music_5.json.gz") %>% 
 str_c(collapse = ",") %>% 
