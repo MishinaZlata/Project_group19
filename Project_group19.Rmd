@@ -4,13 +4,13 @@ output: html_document
 ---
 
 ```{r}
-reviews = readLines("~/shared/minor3_2016/data/amazon/reviews_Digital_Music_5.json.gz") %>% 
+reviews = readLines("~/Project/reviews_Digital_Music_5.json.gz") %>% 
 str_c(collapse = ",") %>% 
 (function(str) str_c("[", str, "]")) %>% 
 fromJSON(simplifyDataFrame = T)
 ```
 
-Оцениваем полезность отзывов. Yes - полезный, no - бесполезный, votes - всего голосов.
+Оцениваем полезность отзывов. Yes - полезный, no - бесполезный, votes - всего голосов
 ```{r}
 reviews$helpful <- gsub("c\\(", '', reviews$helpful)
 reviews$helpful <- gsub(":", ', ', reviews$helpful) 
