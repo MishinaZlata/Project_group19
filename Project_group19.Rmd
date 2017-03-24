@@ -4,7 +4,13 @@ output: html_document
 ---
 
 ```{r}
-reviews = readLines("~/Project/reviews_Digital_Music_5.json.gz") %>% 
+library(quanteda)
+library(jsonlite)
+library(stringr)
+```
+
+```{r}
+reviews = readLines("~/shared/minor3_2016/data/amazon/reviews_Digital_Music_5.json.gz") %>% 
 str_c(collapse = ",") %>% 
 (function(str) str_c("[", str, "]")) %>% 
 fromJSON(simplifyDataFrame = T)
