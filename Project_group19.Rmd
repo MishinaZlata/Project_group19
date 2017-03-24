@@ -1,0 +1,42 @@
+---
+title: "Project1"
+output: html_document
+---
+
+```{r}
+reviews = readLines("~/shared/minor3_2016/data/amazon/reviews_Digital_Music_5.json.gz") %>% 
+str_c(collapse = ",") %>% 
+(function(str) str_c("[", str, "]")) %>% 
+fromJSON(simplifyDataFrame = T)
+```
+
+Оцениваем полезность отзывов. Yes - полезный, no - бесполезный, votes - всего голосов.
+```{r}
+reviews$helpful <- gsub("c\\(", '', reviews$helpful)
+reviews$helpful <- gsub(":", ', ', reviews$helpful) 
+reviews$helpful <- gsub("\\)", '', reviews$helpful) 
+
+library(stringr) 
+help_vector <- str_split_fixed(reviews$helpful, ",", 2) 
+reviews$yes <- help_vector[, 1] 
+reviews$votes <- help_vector[, 2] 
+reviews$yes <- as.numeric(reviews$yes) 
+reviews$votes <- as.numeric(reviews$votes) 
+reviews$no <- reviews$votes-reviews$yes 
+```
+
+Убираем те отзывы, где нет никаких оценок
+```{r}
+library(jsonlite)
+library(dplyr)
+library(quanteda)
+
+reviews<-filter(reviews, votes>0)
+```
+
+Посчитаем среднюю оценку для каждой композиции и выберем только те, у которых оценка будет выше 3,5
+```{r}
+reviews<-group_by (reviews, asin)
+reviews_mean_overall<-summarise (reviews, mean=mean (overall))
+reviews_mean_overall<-filter (reviews_mean_overall, mean>3.5)
+```
