@@ -1,0 +1,139 @@
+---
+title: "Project1"
+output: html_document
+---
+
+
+```{r}
+reviews = readLines("~/shared/minor3_2016/data/amazon/reviews_Digital_Music_5.json.gz") %>% 
+str_c(collapse = ",") %>% 
+(function(str) str_c("[", str, "]")) %>% 
+fromJSON(simplifyDataFrame = T)
+```
+
+```{r}
+library(readr)
+text<-readLines("~/shared/minor3_2016/data/amazon/meta_Digital_Music_fix.json")
+bigJson<-paste(text, collapse=",")
+bigJson<-paste0(c("[",bigJson,"]"), collapse="")
+Music_meta<-fromJSON(bigJson, simplifyDataFrame= TRUE, flatten = TRUE)
+save(Music_meta,file="~/Project/meta_Music.Rdata")
+
+load(file="~/Project/meta_Music.Rdata")
+```
+
+```{r}
+Music_meta$categories <- gsub("list\\(", '', Music_meta$categories)
+Music_meta$categories <- gsub("\\c\\(", '', Music_meta$categories)
+Music_meta$categories <- gsub(":", ', ', Music_meta$categories) 
+Music_meta$categories <- gsub("\\)", '', Music_meta$categories) 
+Music_meta$categories <- gsub(")", '', Music_meta$categories) 
+```
+
+Оцениваем полезность отзывов. Yes - полезный, no - бесполезный, votes - всего голосов
+```{r}
+reviews$helpful <- gsub("c\\(", '', reviews$helpful)
+reviews$helpful <- gsub(":", ', ', reviews$helpful) 
+reviews$helpful <- gsub("\\)", '', reviews$helpful) 
+
+```
+
+```{r}
+all_table<-inner_join (reviews, Music_meta, by='asin')
+```
+
+
+
+```{r, results='asin'}
+count=count(group_by (all_table,asin))
+```
+
+```{r}
+all_table<-inner_join(all_table, count, by='asin')
+```
+
+
+```{r}
+library(jsonlite) 
+library(stringr)
+library(dplyr)
+library(jsonlite) 
+library(stringr)
+library(dplyr)
+```
+
+```{r}
+library(cluster)
+library(ggplot2)
+library(reshape)
+library(Matrix)
+library(reshape2)
+library(reshape)
+library(tidyr)
+library(GGally)
+library(tidyverse)
+```
+
+```{r}
+Music_Dig <- all_table %>% 
+  group_by(reviewerName,asin,overall) %>%
+  ungroup() %>%
+  select(reviewerName,asin,overall)
+Music_Dig <- Music_Dig %>% 
+ group_by(asin) %>% 
+ filter(n()>100)
+ Music_Dig <- filter(Music_Dig,  !is.na(reviewerName))
+  Music_Dig <- Music_Dig %>% 
+ group_by(reviewerName) %>% 
+ filter(n()>2)
+```
+
+```{r}
+Music<- Music_Dig[!duplicated(Music_Dig), ]
+Music <- Music[!(Music$reviewerName %in% c("A Customer","Amazon Customer")),]
+Music <- Music[!duplicated(Music[c("reviewerName","asin")]),]
+ 
+Music <- within(Music, {
+  overall <- as.numeric(as.character(overall))
+})
+music_data <- dcast(Music, reviewerName ~ asin, value.var = "overall")
+music_data<- music_data %>% remove_rownames %>% column_to_rownames(var="reviewerName")
+```
+
+  
+```{r}
+library(recommenderlab)
+Matrix<-as.matrix(music_data)
+matrix <- as(Matrix, "realRatingMatrix")
+
+similarity_users10 <- similarity(matrix[1:10, ], method = "cosine", which = "users")
+as.matrix(similarity_users10)
+
+
+image(as.matrix(similarity_users10), main = "User similarity")
+```
+
+```{r}
+set.seed(100)
+test_ind <- sample(1:nrow(r), size = nrow(r)*0.2)
+recc_data_train <- r[-test_ind, ]
+recc_data_test <- r[test_ind, ]
+
+recc_model <- Recommender(data = recc_data_train, method = "IBCF",
+parameter = list(k = 30))
+recc_model
+
+recc_predicted <- predict(object = recc_model, newdata = recc_data_test, n = 5)
+recc_predicted
+
+str(recc_predicted)
+
+recc_user_1 <- recc_predicted@items[[1]]
+recc_user_1
+
+music_user_1 <- recc_predicted@itemLabels[recc_user_1]
+music_user_1
+```
+
+
+
