@@ -1,0 +1,77 @@
+```{r}
+library(dplyr)
+library(readr)
+library(stringr)
+library(jsonlite)
+
+library(tidytext)
+library(tidyr)
+library(quanteda)
+```
+
+```{r}
+reviews = readLines("~/shared/minor3_2016/data/amazon/reviews_Digital_Music_5.json.gz") %>% 
+str_c(collapse = ",") %>% 
+(function(str) str_c("[", str, "]")) %>% 
+fromJSON(simplifyDataFrame = T)
+```
+
+```{r}
+# let's make a nice text
+t = rev
+rev$reviewText = tolower(rev$reviewText)
+rev = as.data.frame(sapply(rev, function(x) gsub("\"", "", x)))
+rev = as.data.frame(sapply(rev, function(x) gsub("[()]", "", x)))
+rev$reviewText = str_replace_all(rev$reviewText, "\\&quote\\;", " ")
+rev$reviewText = str_replace_all(rev$reviewText, "[[:punct:]]", "")
+
+
+
+# we have to clean up the dataset, making a doc for each album
+func_paste <- function(x) paste(unique(x), collapse = ', ')
+r = rev %>%
+    group_by(asin) %>%
+    summarise_each(funs(func_paste))
+
+# write.csv(r, "reviews_per_asin.csv", row.names = F)
+```
+
+```{r}
+r$reviewText = str_replace_all(r$reviewText, "[0-9]+", "")
+# reviews_per_asin = r
+
+
+# buildimg a corpus
+rev_cor <- corpus(reviews_per_asin$reviewText)
+docvars(rev_cor, "AlbumID") <- reviews_per_asin$asin
+
+rev_cor_dfm <- dfm(rev_cor, remove = c(stopwords(kind = "english")), stem=TRUE, groups="AlbumID")
+head(rev_cor_dfm)
+```
+
+```{r}
+# let'slook at all albums resembling at B00000016W
+freq <- tfidf(rev_cor_dfm)
+sim12 <- quanteda::similarity(freq, selection = "B00000016W", method = "cosine", margin = "document", n = 10)
+sim12
+
+
+# resemblence of all the corpuses
+sim <- quanteda::similarity(freq, method = "cosine", margin = "document")
+s=as.data.frame(as.matrix(sim))
+s=s[colnames(s),]
+
+s[1:10, 1:10]
+
+# the most close reviews
+s = s %>% mutate(doc1 = rownames(s))
+simil = gather(s, key= doc2, value = sim, -doc1) %>%
+  filter(sim<1) %>% #убираем идентичные отзывы
+  top_n(sim, n = 15) %>%
+  arrange(-sim)
+
+
+textIds <- simil$doc2[1:10]
+```
+
+we have to add topics
